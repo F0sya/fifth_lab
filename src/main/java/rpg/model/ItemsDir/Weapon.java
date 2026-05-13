@@ -1,7 +1,7 @@
 package rpg.model.ItemsDir;
 
 public class Weapon implements Cloneable {
-    private int durability; // Мутабельна змінна стану зброї
+    private int durability;
 
     public Weapon(int durability) {
         this.durability = durability;
@@ -10,7 +10,6 @@ public class Weapon implements Cloneable {
     public int getDurability() { return durability; }
     public void setDurability(int durability) { this.durability = durability; }
 
-    // Глибинне копіювання самої зброї
     @Override
     public Weapon clone() {
         try {

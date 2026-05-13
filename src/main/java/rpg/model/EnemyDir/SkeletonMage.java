@@ -29,12 +29,10 @@ public class SkeletonMage extends SkeletonArcher {
     public Group draw(boolean isDevMode) {
         Group mageGroup = super.draw(isDevMode);
 
-        // Вертикальний посох, який він тримає перед собою
         javafx.scene.shape.Line staff = new javafx.scene.shape.Line(getX() + 15, getY() - 40, getX() + 15, getY());
         staff.setStroke(Color.PURPLE);
         staff.setStrokeWidth(3);
 
-        // Магічна сфера на вершині посоха
         Circle magicOrb = new Circle(getX() + 15, getY() - 45, 6);
         magicOrb.setFill(Color.MAGENTA);
 

@@ -62,40 +62,34 @@ public class SkeletonWarrior implements Cloneable {
     public Group draw(boolean isDevMode) {
         Group skeletonGroup = new Group();
 
-        // --- БАЗОВИЙ ВИГЛЯД (Малюється ЗАВЖДИ) ---
-        // 1. Тіло (тепер витягнуте по вертикалі, x та y - це координати ніг на підлозі)
+
         Rectangle body = new Rectangle(this.x - 10, this.y - 40, 20, 40);
         body.setFill(Color.DARKGRAY);
 
-        // 2. Голова
+
         Circle head = new Circle(this.x, this.y - 45, 10);
         head.setFill(Color.LIGHTGRAY);
 
-        // 3. Зброя (лінія, що стирчить вперед/вправо)
+
         javafx.scene.shape.Line weapon = new javafx.scene.shape.Line(this.x, this.y - 20, this.x + 25, this.y - 20);
         weapon.setStroke(Color.DARKGRAY);
         weapon.setStrokeWidth(3);
 
-        // 4. Текст імені (ОБОВ'ЯЗКОВО виносимо сюди для виконання пункту 5 методички)
         Text nameText = new Text(this.x - 25, this.y - 60, this.name);
         nameText.setFill(Color.WHITE);
 
         skeletonGroup.getChildren().addAll(body, head, weapon, nameText);
 
-        // --- СЛУЖБОВА ІНФОРМАЦІЯ ТА СМУЖКИ (ТІЛЬКИ в режимі розробника) ---
         if (isDevMode) {
-            // Доповнюємо текст інформацією про ХП
             nameText.setText(this.name + " (" + this.hp + "HP)");
             nameText.setFill(Color.RED);
 
-            // Смужка здоров'я (Червона, малюємо під ногами)
             Rectangle hpBg = new Rectangle(this.x - 10, this.y + 5, 20, 4);
             hpBg.setFill(Color.BLACK);
             double hpPercentage = Math.max(0, Math.min(1.0, (double) this.hp / this.maxHP));
             Rectangle hpBar = new Rectangle(this.x - 10, this.y + 5, 20 * hpPercentage, 4);
             hpBar.setFill(Color.RED);
 
-            // Смужка міцності зброї (Помаранчева, ще нижче)
             Rectangle weaponBg = new Rectangle(this.x - 10, this.y + 12, 20, 4);
             weaponBg.setFill(Color.BLACK);
             double weaponPercentage = Math.max(0, Math.min(1.0, this.weapon.getDurability() / 100.0));
@@ -104,7 +98,6 @@ public class SkeletonWarrior implements Cloneable {
 
             skeletonGroup.getChildren().addAll(hpBg, hpBar, weaponBg, weaponBar);
 
-            // Рамка виділення (збільшена, щоб охопити нове високе тіло та зброю)
             if (this.isActive()) {
                 Rectangle selectionBox = new Rectangle(this.x - 30, this.y - 75, 65, 100);
                 selectionBox.setFill(Color.TRANSPARENT);

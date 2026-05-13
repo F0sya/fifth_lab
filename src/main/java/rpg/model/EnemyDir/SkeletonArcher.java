@@ -32,7 +32,6 @@ public class SkeletonArcher extends SkeletonWarrior {
     public Group draw(boolean isDevMode) {
         Group archerGroup = super.draw(isDevMode);
 
-        // Малюємо лук (дуга) так, щоб він був у руках (трохи вище і правіше від ніг)
         javafx.scene.shape.Arc bow = new javafx.scene.shape.Arc(getX() + 10, getY() - 20, 10, 20, 270, 180);
         bow.setFill(Color.TRANSPARENT);
         bow.setStroke(Color.SADDLEBROWN);
