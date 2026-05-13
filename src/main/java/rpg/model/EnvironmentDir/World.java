@@ -18,7 +18,10 @@ public class World {
     public void addRoom(DungeonRoom room) { rooms.add(room); }
     public List<DungeonRoom> getRooms() { return rooms; }
 
-    public void addFreeEnemy(SkeletonWarrior enemy) { freeEnemies.add(enemy); }
+    public void addFreeEnemy(SkeletonWarrior enemy) {
+        freeEnemies.add(enemy);
+        enemy.setOwnerRoomName(null);
+    }
     public void removeFreeEnemy(SkeletonWarrior enemy) { freeEnemies.remove(enemy); }
     public List<SkeletonWarrior> getFreeEnemies() { return freeEnemies; }
 
@@ -35,14 +38,8 @@ public class World {
     public Group draw(boolean isDevMode) {
         Group worldGroup = new Group();
 
-
         for (DungeonRoom room : rooms) {
             worldGroup.getChildren().add(room.draw(isDevMode));
-        }
-
-
-        for (SkeletonWarrior enemy : freeEnemies) {
-            worldGroup.getChildren().add(enemy.draw(isDevMode));
         }
 
         return worldGroup;

@@ -31,8 +31,12 @@ public class DungeonRoom {
 
     public void addEnemy(SkeletonWarrior enemy) {
         this.enemies.add(enemy);
+        enemy.setOwnerRoomName(this.name);
     }
-    public void removeEnemy(SkeletonWarrior enemy) { this.enemies.remove(enemy);}
+    public void removeEnemy(SkeletonWarrior enemy) {
+        this.enemies.remove(enemy);
+        enemy.setOwnerRoomName(null);
+    }
 
 
     public List<SkeletonWarrior> getEnemies() {
@@ -83,6 +87,8 @@ public class DungeonRoom {
 
         return roomGroup;
     }
+
+    public String getName() { return name; }
 
     public int getX() { return x; }
     public void setX(int x) {this.x = x; }

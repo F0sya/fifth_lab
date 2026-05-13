@@ -24,6 +24,8 @@ public class SkeletonWarrior implements Cloneable {
     private int x;
     private int y;
 
+    private String ownerRoomName;
+
 
     public SkeletonWarrior(){
         this(100,1.2,"Скелет-воїн");
@@ -35,7 +37,9 @@ public class SkeletonWarrior implements Cloneable {
         this.damageMultiplier = damageMultiplier;
         this.name = name;
         this.isActive = false;
-        this.weapon = new Weapon(100);    }
+        this.weapon = new Weapon(100);
+        this.ownerRoomName = null;
+    }
 
     public void takeDamage(int amount){
         this.hp -= amount;
@@ -62,14 +66,13 @@ public class SkeletonWarrior implements Cloneable {
     public Group draw(boolean isDevMode) {
         Group skeletonGroup = new Group();
 
+        boolean isFree = (ownerRoomName == null);
 
         Rectangle body = new Rectangle(this.x - 10, this.y - 40, 20, 40);
         body.setFill(Color.DARKGRAY);
 
-
         Circle head = new Circle(this.x, this.y - 45, 10);
         head.setFill(Color.LIGHTGRAY);
-
 
         javafx.scene.shape.Line weapon = new javafx.scene.shape.Line(this.x, this.y - 20, this.x + 25, this.y - 20);
         weapon.setStroke(Color.DARKGRAY);
@@ -78,11 +81,17 @@ public class SkeletonWarrior implements Cloneable {
         Text nameText = new Text(this.x - 25, this.y - 60, this.name);
         nameText.setFill(Color.WHITE);
 
+        if (isFree) {
+            body.setFill(Color.DARKGRAY.deriveColor(0, 1, 1, 0.5));
+            head.setFill(Color.LIGHTGRAY.deriveColor(0, 1, 1, 0.5));
+            nameText.setText("~ " + this.name);
+        }
+
         skeletonGroup.getChildren().addAll(body, head, weapon, nameText);
 
         if (isDevMode) {
-            nameText.setText(this.name + " (" + this.hp + "HP)");
-            nameText.setFill(Color.RED);
+            nameText.setText((isFree ? "~ " : "") + this.name + " (" + this.hp + "HP)");
+            nameText.setFill(isFree ? Color.YELLOW : Color.RED);
 
             Rectangle hpBg = new Rectangle(this.x - 10, this.y + 5, 20, 4);
             hpBg.setFill(Color.BLACK);
@@ -97,6 +106,14 @@ public class SkeletonWarrior implements Cloneable {
             weaponBar.setFill(Color.ORANGE);
 
             skeletonGroup.getChildren().addAll(hpBg, hpBar, weaponBg, weaponBar);
+
+            if (isFree) {
+                javafx.scene.shape.Line freeLine = new javafx.scene.shape.Line(this.x - 20, this.y + 20, this.x + 20, this.y + 20);
+                freeLine.setStroke(Color.YELLOW);
+                freeLine.setStrokeWidth(2);
+                freeLine.getStrokeDashArray().addAll(4d, 3d);
+                skeletonGroup.getChildren().add(freeLine);
+            }
 
             if (this.isActive()) {
                 Rectangle selectionBox = new Rectangle(this.x - 30, this.y - 75, 65, 100);
@@ -134,6 +151,9 @@ public class SkeletonWarrior implements Cloneable {
 
     public int getMaxHP() {return maxHP;}
     public void setMaxHP(int maxHP) { this.maxHP = maxHP;}
+
+    public String getOwnerRoomName() { return ownerRoomName; }
+    public void setOwnerRoomName(String ownerRoomName) { this.ownerRoomName = ownerRoomName; }
 
 
     @Override

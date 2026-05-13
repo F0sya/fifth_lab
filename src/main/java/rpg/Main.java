@@ -13,13 +13,18 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import rpg.model.EnemyDir.SkeletonArcher;
 import rpg.model.EnemyDir.SkeletonMage;
 import rpg.model.EnemyDir.SkeletonWarrior;
-import rpg.model.EnvironmentDir.DungeonRoom; // Наш новий макрооб'єкт
+import rpg.model.EnvironmentDir.DungeonRoom;
+import rpg.model.EnvironmentDir.Tavern;
+import rpg.model.EnvironmentDir.MonsterDungeon;
+import rpg.model.EnvironmentDir.PuzzleDungeon;
 import javafx.collections.FXCollections;
 import rpg.model.EnvironmentDir.World;
 import rpg.model.PlayerDir.Dice;
@@ -28,8 +33,7 @@ import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.scene.layout.StackPane;
 import javafx.scene.shape.Polygon;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
+import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 import java.util.Random;
 import javafx.scene.transform.Scale;
@@ -37,6 +41,7 @@ import javafx.scene.transform.Translate;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Main extends Application {
     private boolean isDeveloperMode = false;
@@ -59,33 +64,32 @@ public class Main extends Application {
 
         world = new World();
 
+        Tavern tavern = new Tavern(50, 50, 1500, 500, "Таверна \"Золотий Кубик\"");
+        MonsterDungeon monsterDungeon = new MonsterDungeon(1700, 50, 1500, 500, "Підземелля з монстрами");
+        PuzzleDungeon puzzleDungeon = new PuzzleDungeon(3350, 50, 1500, 500, "Підземелля з загадками");
 
+        world.addRoom(tavern);
+        world.addRoom(monsterDungeon);
+        world.addRoom(puzzleDungeon);
 
-        DungeonRoom room1 = new DungeonRoom(50, 50, 1500, 500, "Склеп Забутих");
-        DungeonRoom room2 = new DungeonRoom(1700, 50, 1500, 500, "Зал Очікування");
-        DungeonRoom room3 = new DungeonRoom(3350, 50, 1500, 500, "Кімната Боса");
-
-        world.addRoom(room1);
-        world.addRoom(room2);
-        world.addRoom(room3);
-
-        int floorY = room1.getY() + room1.getHeight() - 5;
+        int floorY = tavern.getY() + tavern.getHeight() - 5;
 
         SkeletonWarrior warrior = new SkeletonWarrior();
         warrior.setX(600);
         warrior.setY(floorY);
 
         SkeletonArcher archer = new SkeletonArcher();
-        archer.setX(1000);
+        archer.setX(2200);
         archer.setY(floorY);
 
         SkeletonMage mage = new SkeletonMage();
-        mage.setX(1350);
+        mage.setX(3900);
         mage.setY(floorY);
 
-        room1.addEnemy(warrior);
-        room1.addEnemy(archer);
-        room1.addEnemy(mage);
+        tavern.addEnemy(warrior);
+        monsterDungeon.addEnemy(archer);
+        puzzleDungeon.addEnemy(mage);
+
         player = new Player("Авантюрист", 150, floorY);
 
         scene.setOnKeyPressed(event -> {
@@ -207,7 +211,7 @@ public class Main extends Application {
         });
 
         updateUI();
-        primaryStage.setTitle("Dungeon RPG: Курсова робота");
+        primaryStage.setTitle("Dungeon RPG: Лабораторна робота №4");
         primaryStage.setScene(scene);
         primaryStage.show();
     }
@@ -234,7 +238,7 @@ public class Main extends Application {
             cameraGroup.getTransforms().add(new Scale(scaleFactor, scaleFactor, 0, 0));
 
             double targetX = currentRoom.getX() - 50;
-            double targetY = currentRoom.getY() - 50;
+            double targetY = currentRoom.getY() - 100;
             cameraGroup.getTransforms().add(new Translate(-targetX, -targetY));
 
         } else {
@@ -263,14 +267,59 @@ public class Main extends Application {
 
         cameraGroup.getChildren().add(player.draw(isDeveloperMode));
 
-        statusText.setText(isDeveloperMode ? "Developer Mode: ON (Клікай по ворогах, WASD вимкнено)" : "Developer Mode: OFF (Натисніть F2)");
-        statusText.setFill(isDeveloperMode ? Color.RED : Color.GRAY);
+        buildStatusBar();
 
-        root.getChildren().addAll(cameraGroup, statusText);
+        Rectangle statusBg = new Rectangle(0, 0, 800, 30);
+        statusBg.setFill(Color.web("#000000", 0.7));
+        statusBg.setVisible(isDeveloperMode);
+
+        root.getChildren().addAll(cameraGroup, statusBg, statusText);
 
         if (inCombat && !isDeveloperMode) {
             root.getChildren().add(createCombatMenu());
         }
+    }
+
+    private void buildStatusBar() {
+        if (!isDeveloperMode) {
+            statusText.setText("Натисніть F2 для Developer Mode");
+            statusText.setFill(Color.GRAY);
+            statusText.setFont(Font.font("Courier New", FontWeight.NORMAL, 12));
+            return;
+        }
+
+        List<SkeletonWarrior> activeEnemies = world.getAllEnemies().stream()
+                .filter(SkeletonWarrior::isActive)
+                .collect(Collectors.toList());
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("[DEV] ");
+
+        if (activeEnemies.isEmpty()) {
+            sb.append("Немає активних мікрооб'єктів. ");
+        } else {
+            sb.append("Активних: ").append(activeEnemies.size()).append(" → ");
+            for (int i = 0; i < activeEnemies.size(); i++) {
+                SkeletonWarrior e = activeEnemies.get(i);
+                String roomName = "вільний";
+                for (DungeonRoom room : world.getRooms()) {
+                    if (room.getEnemies().contains(e)) {
+                        roomName = room.getName();
+                        break;
+                    }
+                }
+                sb.append(e.getName())
+                        .append(" (").append(e.getHP()).append("HP, ")
+                        .append(roomName).append(")");
+                if (i < activeEnemies.size() - 1) sb.append("; ");
+            }
+            sb.append(" ");
+        }
+        sb.append("| INS=створити DEL=видалити ESC=деактивувати U=вилучити B=прив'язати Ctrl-C=клон");
+
+        statusText.setText(sb.toString());
+        statusText.setFill(Color.web("#ff4444"));
+        statusText.setFont(Font.font("Courier New", FontWeight.BOLD, 11));
     }
 
     private void showEditDialog(SkeletonWarrior enemy) {
@@ -285,6 +334,21 @@ public class Main extends Application {
         TextField hpField = new TextField(String.valueOf(enemy.getHP()));
         TextField maxHpField = new TextField(String.valueOf(enemy.getMaxHP()));
         TextField durabilityField = new TextField(String.valueOf(enemy.getWeapon().getDurability()));
+
+        Label roomLabel = new Label("Прив'язати до макрооб'єкта:");
+        ComboBox<String> roomBox = new ComboBox<>();
+        roomBox.getItems().add("(вільний)");
+        for (DungeonRoom room : world.getRooms()) {
+            roomBox.getItems().add(room.getName());
+        }
+        String currentRoomName = "(вільний)";
+        for (DungeonRoom room : world.getRooms()) {
+            if (room.getEnemies().contains(enemy)) {
+                currentRoomName = room.getName();
+                break;
+            }
+        }
+        roomBox.setValue(currentRoomName);
 
         Button saveBtn = new Button("Зберегти");
         saveBtn.setOnAction(e -> {
@@ -308,6 +372,23 @@ public class Main extends Application {
                 System.out.println("Введено некоректне число!");
             }
 
+            String selectedRoom = roomBox.getValue();
+            for (DungeonRoom room : world.getRooms()) {
+                room.removeEnemy(enemy);
+            }
+            world.removeFreeEnemy(enemy);
+
+            if ("(вільний)".equals(selectedRoom)) {
+                world.addFreeEnemy(enemy);
+            } else {
+                for (DungeonRoom room : world.getRooms()) {
+                    if (room.getName().equals(selectedRoom)) {
+                        room.addEnemy(enemy);
+                        break;
+                    }
+                }
+            }
+
             updateUI();
             dialog.close();
         });
@@ -317,10 +398,11 @@ public class Main extends Application {
                 new Label("Поточне здоров'я (HP):"), hpField,
                 new Label("Максимальне здоров'я (Max HP):"), maxHpField,
                 new Label("Міцність зброї (0-100):"), durabilityField,
+                roomLabel, roomBox,
                 saveBtn
         );
 
-        Scene dialogScene = new Scene(vbox, 250, 300);
+        Scene dialogScene = new Scene(vbox, 300, 420);
         dialog.setScene(dialogScene);
         dialog.show();
     }
@@ -348,6 +430,25 @@ public class Main extends Application {
 
         CheckBox activeCheckBox = new CheckBox("Зробити активним одразу");
 
+        Label roomLabel = new Label("Розмістити у макрооб'єкті:");
+        ToggleGroup roomToggle = new ToggleGroup();
+        VBox radioBox = new VBox(5);
+        RadioButton freeRadio = new RadioButton("Вільний (без макрооб'єкта)");
+        freeRadio.setToggleGroup(roomToggle);
+        radioBox.getChildren().add(freeRadio);
+
+        for (DungeonRoom room : world.getRooms()) {
+            RadioButton rb = new RadioButton(room.getName());
+            rb.setToggleGroup(roomToggle);
+            rb.setUserData(room);
+            radioBox.getChildren().add(rb);
+        }
+        if (radioBox.getChildren().size() > 1) {
+            ((RadioButton) radioBox.getChildren().get(1)).setSelected(true);
+        } else {
+            freeRadio.setSelected(true);
+        }
+
         Button createBtn = new Button("Створити");
         createBtn.setOnAction(e -> {
             SkeletonWarrior newEnemy;
@@ -373,12 +474,22 @@ public class Main extends Application {
 
             newEnemy.setActive(activeCheckBox.isSelected());
 
-            DungeonRoom firstRoom = world.getRooms().get(0);
+            RadioButton selectedRadio = (RadioButton) roomToggle.getSelectedToggle();
+            DungeonRoom targetRoom = null;
+            if (selectedRadio != null && selectedRadio.getUserData() instanceof DungeonRoom) {
+                targetRoom = (DungeonRoom) selectedRadio.getUserData();
+            }
 
-            newEnemy.setX(firstRoom.getX() + firstRoom.getWidth() / 2);
-            newEnemy.setY(firstRoom.getY() + firstRoom.getHeight() - 20);
-
-            firstRoom.addEnemy(newEnemy);
+            if (targetRoom != null) {
+                newEnemy.setX(targetRoom.getX() + targetRoom.getWidth() / 2);
+                newEnemy.setY(targetRoom.getY() + targetRoom.getHeight() - 5);
+                targetRoom.addEnemy(newEnemy);
+            } else {
+                DungeonRoom firstRoom = world.getRooms().get(0);
+                newEnemy.setX(firstRoom.getX() + firstRoom.getWidth() / 2);
+                newEnemy.setY(firstRoom.getY() + firstRoom.getHeight() - 5);
+                world.addFreeEnemy(newEnemy);
+            }
 
             updateUI();
             dialog.close();
@@ -389,10 +500,11 @@ public class Main extends Application {
                 nameLabel, nameField,
                 hpLabel, hpField,
                 activeCheckBox,
+                roomLabel, radioBox,
                 createBtn
         );
 
-        Scene dialogScene = new Scene(vbox, 300, 350);
+        Scene dialogScene = new Scene(vbox, 350, 480);
         dialog.setScene(dialogScene);
         dialog.show();
     }
@@ -474,14 +586,14 @@ public class Main extends Application {
         attackBtn.setOnAction(e -> {
             playDiceAnimation(roll -> {
                 System.out.println("Викинуто на атаку: " + roll);
-                int damage = roll + player.getStrength(); // Проста формула урону
+                int damage = roll + player.getStrength();
                 currentTarget.setHP(currentTarget.getHP() - damage);
 
                 if (currentTarget.getHP() <= 0) {
                     System.out.println("Ворога знищено!");
                     currentTarget.setHP(0);
                     currentTarget.setActive(false);
-                    inCombat = false; // Виходимо з бою
+                    inCombat = false;
                 } else {
                     System.out.println("Хід ворога... (ще не реалізовано)");
                 }
@@ -491,9 +603,9 @@ public class Main extends Application {
 
         fleeBtn.setOnAction(e -> {
             playDiceAnimation(roll -> {
-                if (roll > 10) { // Шанс втекти 50%
+                if (roll > 10) {
                     System.out.println("Ви успішно втекли!");
-                    player.setX(player.getX() - 100); // Відстрибуємо назад
+                    player.setX(player.getX() - 100);
                     inCombat = false;
                 } else {
                     System.out.println("Втеча не вдалася! Хід ворога...");
