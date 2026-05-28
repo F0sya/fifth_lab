@@ -69,13 +69,13 @@ public class SkeletonWarrior implements Cloneable {
         this.y += dy;
     }
 
-    // Static polymorphism (Method overloading)
+    
     public void move(double speed, double angle) {
         this.x += (int) (speed * Math.cos(angle));
         this.y += (int) (speed * Math.sin(angle));
     }
 
-    // Virtual function for automatic behavior
+    
     public void updateAutomaticBehavior(World world, Player player, String moveMode) {
         decrementCooldown();
 
@@ -87,17 +87,17 @@ public class SkeletonWarrior implements Cloneable {
             double angle = Math.atan2(player.getY() - this.y, player.getX() - this.x);
             move(2.5, angle);
         } else {
-            // Wander: keep moving in the same direction, switch direction occasionally (left or right only)
+            
             if (wanderDirectionCooldown <= 0) {
                 currentWanderAngle = (Math.random() < 0.5) ? 0 : Math.PI;
-                wanderDirectionCooldown = 15 + (int) (Math.random() * 20); // 1.5 to 3.5 seconds
+                wanderDirectionCooldown = 15 + (int) (Math.random() * 20); 
             } else {
                 wanderDirectionCooldown--;
             }
             move(1.5, currentWanderAngle);
         }
 
-        // Keep inside reasonable bounds
+        
         if (this.x < 50) this.x = 50;
         if (this.x > 5000) this.x = 5000;
         if (this.y < 50) this.y = 50;

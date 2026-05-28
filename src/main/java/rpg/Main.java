@@ -61,7 +61,7 @@ public class Main extends Application {
     private boolean inCombat = false;
     private SkeletonWarrior currentTarget = null;
 
-    // Lab 5 additions
+    
     private boolean isSimulating = false;
     private String moveMode = "Wander";
     private String selectedRoomFilter = "Всі";
@@ -104,7 +104,7 @@ public class Main extends Application {
 
         player = new Player("Авантюрист", 150, floorY);
 
-        // Initialize gameLoop
+        
         gameLoop = new Timeline(new KeyFrame(Duration.millis(100), e -> {
             updateSimulation();
         }));
@@ -118,7 +118,7 @@ public class Main extends Application {
         gameContainer.setClip(clip);
         gameContainer.getChildren().add(root);
 
-        // Sidebar
+        
         sidebar = createSidebar();
         sidebar.setVisible(isDeveloperMode);
         sidebar.setManaged(isDeveloperMode);
@@ -140,7 +140,7 @@ public class Main extends Application {
                 return;
             }
 
-            // Keyboard shortcut M to toggle movement modes
+            
             if (event.getCode() == KeyCode.M) {
                 if ("Wander".equals(moveMode)) {
                     moveMode = "Follow Player";
@@ -317,7 +317,7 @@ public class Main extends Application {
             cameraGroup.getChildren().add(enemyGraphic);
         }
 
-        // Draw interaction lines between close enemies
+        
         for (int i = 0; i < enemies.size(); i++) {
             SkeletonWarrior e1 = enemies.get(i);
             for (int j = i + 1; j < enemies.size(); j++) {
@@ -898,7 +898,7 @@ public class Main extends Application {
             try {
                 minHp = Integer.parseInt(hpField.getText());
             } catch (NumberFormatException ex) {
-                // Ignore
+                
             }
 
             String selectedType = typeBox.getValue();
@@ -962,12 +962,12 @@ public class Main extends Application {
 
         List<SkeletonWarrior> allEnemies = world.getAllEnemies();
 
-        // 1. Update automatic behaviors (dynamic polymorphism!)
+        
         for (SkeletonWarrior enemy : allEnemies) {
             enemy.updateAutomaticBehavior(world, player, moveMode);
         }
 
-        // 2. Handle room entering and leaving dynamically
+        
         List<DungeonRoom> rooms = world.getRooms();
 
         for (SkeletonWarrior enemy : allEnemies) {
@@ -1006,7 +1006,7 @@ public class Main extends Application {
             }
         }
 
-        // 3. Pairwise skeleton interactions
+        
         allEnemies = world.getAllEnemies();
         for (int i = 0; i < allEnemies.size(); i++) {
             SkeletonWarrior e1 = allEnemies.get(i);

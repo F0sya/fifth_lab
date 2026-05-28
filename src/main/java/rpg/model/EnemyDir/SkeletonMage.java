@@ -31,7 +31,7 @@ public class SkeletonMage extends SkeletonArcher {
         }
     }
 
-    // Overloaded castSpell (Static polymorphism)
+    
     public void castSpell(SkeletonWarrior ally) {
         if (mana >= 10) {
             mana -= 10;
@@ -66,13 +66,13 @@ public class SkeletonMage extends SkeletonArcher {
             move(1.0, currentWanderAngle);
         }
 
-        // Sinusoidal floating pattern
+        
         setY((int) (480 + 35 * Math.sin(getX() * 0.04)));
 
         if (getX() < 50) setX(50);
         if (getX() > 5000) setX(5000);
 
-        // Mage checks for nearby injured allies to heal using instanceof
+        
         if (Math.random() < 0.15) {
             for (SkeletonWarrior other : world.getAllEnemies()) {
                 if (other != this && other.getHP() < other.getMaxHP()) {
