@@ -18,6 +18,9 @@ import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.scene.layout.Pane;
+import javafx.scene.shape.Rectangle;
+import java.util.Objects;
 import rpg.model.EnemyDir.SkeletonArcher;
 import rpg.model.EnemyDir.SkeletonMage;
 import rpg.model.EnemyDir.SkeletonWarrior;
@@ -58,10 +61,19 @@ public class Main extends Application {
     private boolean inCombat = false;
     private SkeletonWarrior currentTarget = null;
 
+    // Lab 5 additions
+    private boolean isSimulating = false;
+    private String moveMode = "Wander";
+    private String selectedRoomFilter = "Всі";
+    private String selectedSortCriterion = "Ім'я";
+    private ListView<String> enemyListView = new ListView<>();
+    private ComboBox<String> moveModeBox;
+    private Timeline gameLoop;
+    private HBox mainLayout = new HBox();
+    private VBox sidebar;
+
     @Override
     public void start(Stage primaryStage) {
-        Scene scene = new Scene(root, 800, 600);
-
         world = new World();
 
         Tavern tavern = new Tavern(50, 50, 1500, 500, "Таверна \"Золотий Кубик\"");
@@ -92,14 +104,53 @@ public class Main extends Application {
 
         player = new Player("Авантюрист", 150, floorY);
 
+        // Initialize gameLoop
+        gameLoop = new Timeline(new KeyFrame(Duration.millis(100), e -> {
+            updateSimulation();
+        }));
+        gameLoop.setCycleCount(Timeline.INDEFINITE);
+
+        Pane gameContainer = new Pane();
+        gameContainer.setPrefSize(800, 600);
+        gameContainer.setMinSize(800, 600);
+        gameContainer.setMaxSize(800, 600);
+        Rectangle clip = new Rectangle(800, 600);
+        gameContainer.setClip(clip);
+        gameContainer.getChildren().add(root);
+
+        // Sidebar
+        sidebar = createSidebar();
+        sidebar.setVisible(isDeveloperMode);
+        sidebar.setManaged(isDeveloperMode);
+
+        mainLayout.getChildren().addAll(gameContainer, sidebar);
+        mainLayout.setStyle("-fx-background-color: #121212;");
+
+        Scene scene = new Scene(mainLayout, isDeveloperMode ? 1100 : 800, 600);
+
         scene.setOnKeyPressed(event -> {
             List<SkeletonWarrior> allEnemies = world.getAllEnemies();
-
 
             if (event.getCode() == KeyCode.F2) {
                 isDeveloperMode = !isDeveloperMode;
                 if (!isDeveloperMode) {
                     for (SkeletonWarrior enemy : allEnemies) enemy.setActive(false);
+                }
+                updateUI();
+                return;
+            }
+
+            // Keyboard shortcut M to toggle movement modes
+            if (event.getCode() == KeyCode.M) {
+                if ("Wander".equals(moveMode)) {
+                    moveMode = "Follow Player";
+                    if (moveModeBox != null) moveModeBox.setValue("Переслідування (Follow)");
+                } else if ("Follow Player".equals(moveMode)) {
+                    moveMode = "Stationary";
+                    if (moveModeBox != null) moveModeBox.setValue("Нерухомі (Stationary)");
+                } else {
+                    moveMode = "Wander";
+                    if (moveModeBox != null) moveModeBox.setValue("Блукання (Wander)");
                 }
                 updateUI();
                 return;
@@ -211,7 +262,7 @@ public class Main extends Application {
         });
 
         updateUI();
-        primaryStage.setTitle("Dungeon RPG: Лабораторна робота №4");
+        primaryStage.setTitle("Dungeon RPG: Лабораторна робота №5");
         primaryStage.setScene(scene);
         primaryStage.show();
     }
@@ -250,7 +301,8 @@ public class Main extends Application {
 
         cameraGroup.getChildren().add(world.draw(isDeveloperMode));
 
-        for (SkeletonWarrior enemy : world.getAllEnemies()) {
+        List<SkeletonWarrior> enemies = world.getAllEnemies();
+        for (SkeletonWarrior enemy : enemies) {
             Group enemyGraphic = enemy.draw(isDeveloperMode);
             enemyGraphic.setOnMouseClicked(event -> {
                 if (isDeveloperMode) {
@@ -263,6 +315,24 @@ public class Main extends Application {
                 }
             });
             cameraGroup.getChildren().add(enemyGraphic);
+        }
+
+        // Draw interaction lines between close enemies
+        for (int i = 0; i < enemies.size(); i++) {
+            SkeletonWarrior e1 = enemies.get(i);
+            for (int j = i + 1; j < enemies.size(); j++) {
+                SkeletonWarrior e2 = enemies.get(j);
+                double dx = e1.getX() - e2.getX();
+                double dy = e1.getY() - e2.getY();
+                double dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 60) {
+                    javafx.scene.shape.Line link = new javafx.scene.shape.Line(e1.getX(), e1.getY() - 20, e2.getX(), e2.getY() - 20);
+                    link.setStroke(Color.LIGHTBLUE);
+                    link.setStrokeWidth(2);
+                    link.getStrokeDashArray().addAll(5d, 5d);
+                    cameraGroup.getChildren().add(link);
+                }
+            }
         }
 
         cameraGroup.getChildren().add(player.draw(isDeveloperMode));
@@ -278,6 +348,26 @@ public class Main extends Application {
         if (inCombat && !isDeveloperMode) {
             root.getChildren().add(createCombatMenu());
         }
+
+        if (sidebar != null) {
+            sidebar.setVisible(isDeveloperMode);
+            sidebar.setManaged(isDeveloperMode);
+        }
+
+        if (mainLayout.getScene() != null && mainLayout.getScene().getWindow() != null) {
+            mainLayout.layout();
+            Stage stage = (Stage) mainLayout.getScene().getWindow();
+            double currentSceneWidth = mainLayout.getScene().getWidth();
+            double stageWidth = stage.getWidth();
+            double decorWidth = stageWidth - currentSceneWidth;
+            if (stageWidth > 0 && currentSceneWidth > 0) {
+                stage.setWidth((isDeveloperMode ? 1100 : 800) + decorWidth);
+            } else {
+                stage.sizeToScene();
+            }
+        }
+
+        refreshEnemyList();
     }
 
     private void buildStatusBar() {
@@ -616,6 +706,325 @@ public class Main extends Application {
 
         menu.getChildren().addAll(attackBtn, blockBtn, fleeBtn);
         return menu;
+    }
+
+    private VBox createSidebar() {
+        VBox sidebar = new VBox(15);
+        sidebar.setPadding(new Insets(15));
+        sidebar.setPrefWidth(300);
+        sidebar.setMinWidth(300);
+        sidebar.setMaxWidth(300);
+        sidebar.setStyle("-fx-background-color: #232323; -fx-border-color: #444444; -fx-border-width: 0 0 0 2;");
+
+        Label title = new Label("Панель запитів & Керування");
+        title.setTextFill(Color.GOLD);
+        title.setFont(Font.font("Courier New", FontWeight.BOLD, 16));
+
+        Label moveTitle = new Label("Автоматичний Рух");
+        moveTitle.setTextFill(Color.WHITE);
+        moveTitle.setFont(Font.font("System", FontWeight.BOLD, 12));
+
+        moveModeBox = new ComboBox<>(FXCollections.observableArrayList(
+                "Блукання (Wander)",
+                "Переслідування (Follow)",
+                "Нерухомі (Stationary)"
+        ));
+        moveModeBox.setValue("Блукання (Wander)");
+        moveModeBox.setPrefWidth(270);
+        moveModeBox.setOnAction(e -> {
+            String val = moveModeBox.getValue();
+            if (val.startsWith("Блукання")) moveMode = "Wander";
+            else if (val.startsWith("Переслідування")) moveMode = "Follow Player";
+            else moveMode = "Stationary";
+        });
+
+        Button toggleMoveBtn = new Button("Запустити рух");
+        toggleMoveBtn.setPrefWidth(270);
+        toggleMoveBtn.setStyle("-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold;");
+        toggleMoveBtn.setOnAction(e -> {
+            isSimulating = !isSimulating;
+            if (isSimulating) {
+                toggleMoveBtn.setText("Зупинити рух");
+                toggleMoveBtn.setStyle("-fx-background-color: #c62828; -fx-text-fill: white; -fx-font-weight: bold;");
+                gameLoop.play();
+            } else {
+                toggleMoveBtn.setText("Запустити рух");
+                toggleMoveBtn.setStyle("-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold;");
+                gameLoop.pause();
+            }
+        });
+
+        Label queryTitle = new Label("Списки мікрооб'єктів");
+        queryTitle.setTextFill(Color.WHITE);
+        queryTitle.setFont(Font.font("System", FontWeight.BOLD, 12));
+
+        ComboBox<String> roomFilterBox = new ComboBox<>();
+        roomFilterBox.getItems().addAll("Всі", "Вільні скелети");
+        for (DungeonRoom room : world.getRooms()) {
+            roomFilterBox.getItems().add(room.getName());
+        }
+        roomFilterBox.setValue("Всі");
+        roomFilterBox.setPrefWidth(270);
+        roomFilterBox.setOnAction(e -> {
+            selectedRoomFilter = roomFilterBox.getValue();
+            refreshEnemyList();
+        });
+
+        Label sortTitle = new Label("Сортувати за:");
+        sortTitle.setTextFill(Color.WHITE);
+        sortTitle.setFont(Font.font("System", FontWeight.BOLD, 12));
+
+        ComboBox<String> sortBox = new ComboBox<>(FXCollections.observableArrayList(
+                "Ім'я",
+                "Здоров'я (HP)",
+                "Міцність зброї"
+        ));
+        sortBox.setValue("Ім'я");
+        sortBox.setPrefWidth(270);
+        sortBox.setOnAction(e -> {
+            selectedSortCriterion = sortBox.getValue();
+            refreshEnemyList();
+        });
+
+        enemyListView.setPrefHeight(200);
+        enemyListView.setStyle("-fx-background-color: #1e1e1e; -fx-control-inner-background: #1e1e1e; -fx-text-fill: white; -fx-font-family: 'Courier New'; -fx-font-size: 11px;");
+
+        Button searchBtn = new Button("🔍 Пошук за параметрами...");
+        searchBtn.setPrefWidth(270);
+        searchBtn.setStyle("-fx-background-color: #1565c0; -fx-text-fill: white; -fx-font-weight: bold;");
+        searchBtn.setOnAction(e -> showSearchDialog());
+
+        Label helpLabel = new Label("Керування:\n[Insert] Створити об'єкт\n[F2] Режим розробника (DEV)\n[M] Зміна характеру руху");
+        helpLabel.setTextFill(Color.GRAY);
+        helpLabel.setFont(Font.font("Courier New", 10));
+
+        sidebar.getChildren().addAll(
+                title,
+                new Separator(),
+                moveTitle,
+                moveModeBox,
+                toggleMoveBtn,
+                new Separator(),
+                queryTitle,
+                roomFilterBox,
+                sortTitle,
+                sortBox,
+                enemyListView,
+                new Separator(),
+                searchBtn,
+                helpLabel
+        );
+
+        return sidebar;
+    }
+
+    private void refreshEnemyList() {
+        if (world == null) return;
+        List<SkeletonWarrior> list = new ArrayList<>();
+
+        if ("Всі".equals(selectedRoomFilter)) {
+            list.addAll(world.getAllEnemies());
+        } else if ("Вільні скелети".equals(selectedRoomFilter)) {
+            list.addAll(world.getFreeEnemies());
+        } else {
+            for (DungeonRoom room : world.getRooms()) {
+                if (room.getName().equals(selectedRoomFilter)) {
+                    list.addAll(room.getEnemies());
+                    break;
+                }
+            }
+        }
+
+        if ("Ім'я".equals(selectedSortCriterion)) {
+            list.sort((e1, e2) -> e1.getName().compareToIgnoreCase(e2.getName()));
+        } else if ("Здоров'я (HP)".equals(selectedSortCriterion)) {
+            list.sort((e1, e2) -> Integer.compare(e2.getHP(), e1.getHP()));
+        } else if ("Міцність зброї".equals(selectedSortCriterion)) {
+            list.sort((e1, e2) -> Integer.compare(e2.getWeapon().getDurability(), e1.getWeapon().getDurability()));
+        }
+
+        enemyListView.getItems().clear();
+        for (SkeletonWarrior enemy : list) {
+            String typeName = "Воїн";
+            if (enemy instanceof SkeletonMage) {
+                typeName = "Маг";
+            } else if (enemy instanceof SkeletonArcher) {
+                typeName = "Лучник";
+            }
+            String roomName = (enemy.getOwnerRoomName() == null) ? "Вільний" : enemy.getOwnerRoomName();
+            enemyListView.getItems().add(String.format("%s (%s) [HP: %d/%d, Зброя: %d%%] - %s",
+                    enemy.getName(), typeName, enemy.getHP(), enemy.getMaxHP(),
+                    enemy.getWeapon().getDurability(), roomName));
+        }
+    }
+
+    private void showSearchDialog() {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Пошук мікрооб'єкта");
+
+        VBox vbox = new VBox(10);
+        vbox.setPadding(new Insets(15));
+        vbox.setStyle("-fx-background-color: #2e2e2e;");
+
+        Label nameLabel = new Label("Шукати за ім'ям (частина імені):");
+        nameLabel.setTextFill(Color.WHITE);
+        TextField nameField = new TextField();
+
+        Label hpLabel = new Label("Мінімальне здоров'я (HP):");
+        hpLabel.setTextFill(Color.WHITE);
+        TextField hpField = new TextField("0");
+
+        Label typeLabel = new Label("Клас об'єкта:");
+        typeLabel.setTextFill(Color.WHITE);
+        ComboBox<String> typeBox = new ComboBox<>(FXCollections.observableArrayList(
+                "Будь-який",
+                "Скелет-воїн",
+                "Скелет-лучник",
+                "Скелет-маг"
+        ));
+        typeBox.setValue("Будь-який");
+
+        Button searchBtn = new Button("Знайти");
+        searchBtn.setStyle("-fx-background-color: #444; -fx-text-fill: white;");
+
+        Label resultLabel = new Label();
+        resultLabel.setTextFill(Color.LIGHTGREEN);
+        resultLabel.setWrapText(true);
+
+        searchBtn.setOnAction(e -> {
+            String searchName = nameField.getText().trim();
+            int minHp = 0;
+            try {
+                minHp = Integer.parseInt(hpField.getText());
+            } catch (NumberFormatException ex) {
+                // Ignore
+            }
+
+            String selectedType = typeBox.getValue();
+            List<SkeletonWarrior> matches = new ArrayList<>();
+
+            for (SkeletonWarrior enemy : world.getAllEnemies()) {
+                boolean matchesName = searchName.isEmpty() || enemy.getName().toLowerCase().contains(searchName.toLowerCase());
+                boolean matchesHp = enemy.getHP() >= minHp;
+                boolean matchesType = "Будь-який".equals(selectedType);
+                if (!matchesType) {
+                    if ("Скелет-маг".equals(selectedType) && enemy instanceof SkeletonMage) {
+                        matchesType = true;
+                    } else if ("Скелет-лучник".equals(selectedType) && enemy instanceof SkeletonArcher && !(enemy instanceof SkeletonMage)) {
+                        matchesType = true;
+                    } else if ("Скелет-воїн".equals(selectedType) && !(enemy instanceof SkeletonArcher)) {
+                        matchesType = true;
+                    } else {
+                        matchesType = false;
+                    }
+                }
+
+                if (matchesName && matchesHp && matchesType) {
+                    matches.add(enemy);
+                }
+            }
+
+            if (matches.isEmpty()) {
+                resultLabel.setText("Об'єктів не знайдено.");
+                resultLabel.setTextFill(Color.RED);
+            } else {
+                StringBuilder sb = new StringBuilder("Знайдено об'єктів: " + matches.size() + "\n\n");
+                for (SkeletonWarrior match : matches) {
+                    String room = (match.getOwnerRoomName() == null) ? "не належить жодному макрооб'єкту" : "належить макрооб'єкту '" + match.getOwnerRoomName() + "'";
+                    sb.append(String.format("• %s:\n  Координати: X=%d, Y=%d\n  Приналежність: %s\n\n",
+                            match.getName(), match.getX(), match.getY(), room));
+                }
+                resultLabel.setText(sb.toString());
+                resultLabel.setTextFill(Color.LIGHTGREEN);
+            }
+        });
+
+        vbox.getChildren().addAll(
+                nameLabel, nameField,
+                hpLabel, hpField,
+                typeLabel, typeBox,
+                searchBtn,
+                resultLabel
+        );
+
+        ScrollPane scrollPane = new ScrollPane(vbox);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background: #2e2e2e; -fx-border-color: #2e2e2e;");
+
+        Scene dialogScene = new Scene(scrollPane, 400, 450);
+        dialog.setScene(dialogScene);
+        dialog.show();
+    }
+
+    private void updateSimulation() {
+        if (world == null) return;
+
+        List<SkeletonWarrior> allEnemies = world.getAllEnemies();
+
+        // 1. Update automatic behaviors (dynamic polymorphism!)
+        for (SkeletonWarrior enemy : allEnemies) {
+            enemy.updateAutomaticBehavior(world, player, moveMode);
+        }
+
+        // 2. Handle room entering and leaving dynamically
+        List<DungeonRoom> rooms = world.getRooms();
+
+        for (SkeletonWarrior enemy : allEnemies) {
+            DungeonRoom currentRoom = null;
+            for (DungeonRoom room : rooms) {
+                if (enemy.getX() >= room.getX() && enemy.getX() <= room.getX() + room.getWidth()) {
+                    currentRoom = room;
+                    break;
+                }
+            }
+
+            String targetRoomName = (currentRoom == null) ? null : currentRoom.getName();
+            String currentOwner = enemy.getOwnerRoomName();
+
+            if (!Objects.equals(currentOwner, targetRoomName)) {
+                if (currentOwner != null) {
+                    for (DungeonRoom r : rooms) {
+                        if (r.getName().equals(currentOwner)) {
+                            r.getEnemies().remove(enemy);
+                            break;
+                        }
+                    }
+                } else {
+                    world.getFreeEnemies().remove(enemy);
+                }
+
+                if (targetRoomName != null) {
+                    currentRoom.addEnemy(enemy);
+                    System.out.println(enemy.getName() + " зайшов у кімнату " + targetRoomName);
+                    enemy.setInteractionText("Зайшов!", 15);
+                } else {
+                    world.addFreeEnemy(enemy);
+                    System.out.println(enemy.getName() + " вийшов з кімнати " + currentOwner);
+                    enemy.setInteractionText("Вийшов!", 15);
+                }
+            }
+        }
+
+        // 3. Pairwise skeleton interactions
+        allEnemies = world.getAllEnemies();
+        for (int i = 0; i < allEnemies.size(); i++) {
+            SkeletonWarrior e1 = allEnemies.get(i);
+            for (int j = i + 1; j < allEnemies.size(); j++) {
+                SkeletonWarrior e2 = allEnemies.get(j);
+
+                double dx = e1.getX() - e2.getX();
+                double dy = e1.getY() - e2.getY();
+                double dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < 60) {
+                    e1.interactWith(e2);
+                    e2.interactWith(e1);
+                }
+            }
+        }
+
+        updateUI();
     }
 
     public static void main(String[] args) {
